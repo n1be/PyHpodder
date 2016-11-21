@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# Copyright (c) 2014, Robert N. Evans
+# Copyright (c) 2014, 2015 Robert N. Evans
 
 #
 # PyPod - A podcast media aggregator.  This program is a re-implementation
@@ -46,10 +46,10 @@ from pypod.lib.utils import generic_id_help, mutex, sanitize_filename
 
 
 __author__    = "Robert N. Evans <http://home.earthlink.net/~n1be/>"
-__copyright__ = "Copyright (C) 2014 {0}. All rights reserved.".format( __author__)
-__date__      = "2014-09-20"
+__copyright__ = "Copyright (C) 2014-2015 {0}. All rights reserved.".format( __author__)
+__date__      = "2015-06-02"
 __license__   = "GPLv3"
-__version__   = "0.3"
+__version__   = "0.3.1"
 
 _debug = 1
 
@@ -101,7 +101,8 @@ def _download_episode( ep, gcp, gdbh):
     _i( "{0.podcast.castid}.{0.episodeid} {0.title}".format( ep))
     ep.eplastattempt = int( time.time())
     ep.epfirstattempt = ep.epfirstattempt or ep.eplastattempt
-    filename, path, content_type = easy_get( get_encl_tmp(), ep.epurl)
+    uri = ep.epurl # urllib.quote( ep.epurl, ':/')
+    filename, path, content_type = easy_get( get_encl_tmp(), uri)
     if not path:
         return _handle_episode_error( ep, gcp, gdbh)
     _d( " . {0} episode {1} downloaded".format( content_type, path))

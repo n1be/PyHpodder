@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# Copyright (c) 2014, Robert N. Evans
+# Copyright (c) 2014, 2016 Robert N. Evans
 
 #
 # PyPod - A podcast media aggregator.  This program is a re-implementation
@@ -54,10 +54,10 @@ from utils import sanitize_filename
 
 
 __author__    = "Robert N. Evans <http://home.earthlink.net/~n1be/>"
-__copyright__ = "Copyright (C) 2014 {0}. All rights reserved.".format( __author__)
-__date__      = "2015-05-14"
+__copyright__ = "Copyright (C) 2014-2016 {0}. All rights reserved.".format( __author__)
+__date__      = "2016-06-17"
 __license__   = "GPLv3"
-__version__   = "0.5"
+__version__   = "0.5.1"
 
 
 _debug = 0
@@ -119,9 +119,12 @@ def easy_get( enc_dir, url):
     response, content = _common_get_url( _http_no_cache, url)
     if not response:
         return None, None, None
-    _d( "content-location: {0}".format( response['content-location']))
-    o = urlparse( response['content-location'])
-    bef, sep, filename = o.path.rpartition( "/")
+    try:
+        _d( "content-location: {0}".format( response['content-location']))
+        o = urlparse( response['content-location'])
+        bef, sep, filename = o.path.rpartition( "/")
+    except:
+        filename = None
     if not filename or filename == "." or filename == "..":
         filename = hashlib.md5( url).hexdigest()
     filename = sanitize_filename( filename)

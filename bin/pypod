@@ -33,7 +33,7 @@ except NameError:
 
 __author__    = "Robert N. Evans <http://home.earthlink.net/~n1be/>"
 __copyright__ = "Copyright (C) 2014 {0}. All rights reserved.".format( __author__)
-__date__      = "2014-07-21"
+__date__      = "2014-07-31"
 __license__   = "GPLv3"
 __version__   = "0.2"
 
@@ -48,11 +48,7 @@ if __name__ == "__main__":
         # Run as ./pypod in sibling dir
         sys.path.append(
             os.path.abspath( os.path.dirname( sys.argv[0]) + "/.."))
-        if _debug:
-            print( "Importing pypod ...")
         import pypod
-        if _debug:
-            print( "Importing pypod.main ...")
         from pypod.main import main
     try:
         ret_val = main( sys.argv)

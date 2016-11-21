@@ -26,8 +26,10 @@ application-specific datatypes."""
 # standard library imports
 from __future__ import print_function, unicode_literals
 import sys
+import time
 try:
-    str = unicode
+    # str = unicode
+    pass
 except NameError:
     pass
 
@@ -45,7 +47,7 @@ except ImportError:
 
 __author__    = "Robert N. Evans <http://home.earthlink.net/~n1be/>"
 __copyright__ = "Copyright (C) 2014 {0}. All rights reserved.".format( __author__)
-__date__      = "2014-07-10"
+__date__      = "2014-07-31"
 __license__   = "GPLv3"
 __version__   = "0.2"
 
@@ -119,6 +121,35 @@ class _AppDict( dict):
         raise TypeError( "Can not delete members from {0!s}"
                          .format( self.__class__))
 
+def _human_size( size):
+    "Convert size_t to a \"human\" size."
+    if type( size) == int or type( size) == long:
+        pass
+    else:
+        raise TypeError, "size({0}) must be an integral type".format( size)
+    if size < 0:
+        raise ValueError, "size({0}) must be a non-negative value".format( size)
+    units = ['Y', 'Z', 'E', 'P', 'T', 'G', 'M', 'K']
+    bpu = 10 # bits per unit
+    shift = bpu * len( units)
+    for unit in units:
+        l = size >> shift
+        if l == 0:
+            # less than one of this unit, try the next smaller unit
+            shift -= bpu
+            continue
+        # round to nearest unit
+        l += (size >> (shift - 1)) & 1
+        return '{0}{1}'.format( l, unit)
+    return '{0}'.format( size)
+
+def _tm_to_str( t):
+    "Convert time_t to a local date/time string with 1 minute resolution"
+    if type( t) == int and t > 0:
+        return time.strftime( "%F %H:%M", time.localtime( t))
+    return "(none)"
+
+## --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  -- 
 
 class Podcast( _AppDict):
     """Data about feeds that have been subscribed
@@ -155,10 +186,19 @@ class Podcast( _AppDict):
         else:
             return "[disabled] "
 
+    @property
+    def last_try( self):
+        return _tm_to_str( self.lastattempt)
+
+    @property
+    def updated( self):
+        return _tm_to_str( self.lastupdate)
+
     def __str__( self):
         return "Podcast {0} {1}{2}".format( self.castid, self.disabled_str,
                                              self.castname)
 
+## --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  -- 
 
 class Episode( _AppDict):
     """Data about one enclosure/attachment
@@ -175,7 +215,7 @@ class Episode( _AppDict):
      epfailedattempts :: Integer}
 """
 
-    def __init__( self, podcast, epid, eptitle, epurl, epguid, eptype,
+    def __init__( self, podcast, episodeid, title, epurl, epguid, enctype,
                   epstatus, eplength, epfirstattempt=None, eplastattempt=None,
                   epfailedattempts=0):
         if type( podcast) != Podcast:
@@ -183,18 +223,30 @@ class Episode( _AppDict):
                              .format( podcast))
             
         # Initialize dict to establish datatypes
-        super( Episode, self).__init__( podcast=podcast, epid=0, eptitle='',
-            epurl='', epguid='', eptype='', epstatus=EpisodeStatus[ 0],
-            eplength=0, epfirstattempt=None, eplastattempt=None,
-            epfailedattempts=0)
+        super( Episode, self).__init__( podcast=podcast, episodeid=0,
+            title='', epurl='', epguid='', enctype='',
+            epstatus=EpisodeStatus[ 0], eplength=0, epfirstattempt=None,
+            eplastattempt=None, epfailedattempts=0)
 
-        for mbr in ( 'podcast', 'epid', 'eptitle', 'epurl', 'epguid', 'eptype',
-                     'epstatus', 'eplength', 'epfirstattempt', 'eplastattempt',
-                     'epfailedattempts'):
+        for mbr in ( 'podcast', 'episodeid', 'title', 'epurl', 'epguid',
+                     'enctype', 'epstatus', 'eplength', 'epfirstattempt',
+                     'eplastattempt', 'epfailedattempts'):
             exec ( "self[ '{0}'] = {0}".format( mbr))
 
+    @property
+    def first_try( self):
+        return _tm_to_str( self.epfirstattempt)
+
+    @property
+    def last_try( self):
+        return _tm_to_str( self.eplastattempt)
+
+    @property
+    def lenh( self):
+        return _human_size( self.eplength)
+
     def __str__( self):
-        return "{0.podcast.castid:5d} {0.epid:5d} {0.epstatus!s:4.4} {0.eptitle}" \
+        return "{0.podcast.castid:5d} {0.episodeid:5d} {0.epstatus!s:4.4} {0.title}" \
                 .format( self)
 
 ## --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  -- 

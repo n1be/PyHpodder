@@ -55,12 +55,13 @@ from utils import sanitize_filename
 
 __author__    = "Robert N. Evans <http://home.earthlink.net/~n1be/>"
 __copyright__ = "Copyright (C) 2014 {0}. All rights reserved.".format( __author__)
-__date__      = "2014-07-19"
+__date__      = "2015-05-14"
 __license__   = "GPLv3"
-__version__   = "0.2"
+__version__   = "0.5"
 
 
 _debug = 0
+_socket_timeout = 120 # seconds
 
 if _debug:
     httplib2.debuglevel = 1
@@ -70,8 +71,11 @@ _headers = {"User-Agent": "PyPod/{0} +{1}".format(
         __version__, "http://home.earthlink.net/~n1be/") }
 
 # httplib2 does not understand unicode cache dirname...
-_http = httplib2.Http( get_feed_cache().encode('ascii','ignore'))
-_http_no_cache = httplib2.Http()
+_http = httplib2.Http( get_feed_cache().encode('ascii','ignore'),
+                       timeout=_socket_timeout,
+                       disable_ssl_certificate_validation=True)
+_http_no_cache = httplib2.Http( timeout=_socket_timeout,
+                                disable_ssl_certificate_validation=True)
 
 
 def _d( msg):
@@ -87,6 +91,8 @@ def _common_get_url( http, url):
     "Common code for resource fetch whether or not cacheing is in use."
     _d( "get url: " + url)
     try:
+        http.follow_all_redirects = True
+        # http.force_exception_to_status_code = True
         response, content = http.request( url, headers=_headers)
     except httplib2.HttpLib2Error as e:
         _w( "{0!s}".format( e))
@@ -107,7 +113,7 @@ def cached_get( url):
     return _common_get_url( _http, url)
 
 
-def easy_get( dir, url):
+def easy_get( enc_dir, url):
     """Fetch a resource to a local file without cacheing.  This is intended for
        resources like enclosures that typically only are fetched once."""
     response, content = _common_get_url( _http_no_cache, url)
@@ -120,12 +126,12 @@ def easy_get( dir, url):
         filename = hashlib.md5( url).hexdigest()
     filename = sanitize_filename( filename)
     _d( "filename: " + filename)
-    path = dir + os.sep + hashlib.md5( url).hexdigest()
+    path = enc_dir + os.sep + hashlib.md5( url).hexdigest()
     with open( path, 'w') as f:
         f.write( content)
-    type = response['content-type']
-    _d( "type: " + type)
-    return filename, path, type
+    mime_type = response['content-type']
+    _d( "type: " + mime_type)
+    return filename, path, mime_type
 
 
 def _test_get( url):

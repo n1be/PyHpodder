@@ -38,7 +38,7 @@ except NameError:
 
 __author__    = "Robert N. Evans <http://home.earthlink.net/~n1be/>"
 __copyright__ = "Copyright (C) 2014 {0}. All rights reserved.".format( __author__)
-__date__      = "2014-07-18"
+__date__      = "2014-08-09"
 __license__   = "GPLv3"
 __version__   = "0.2"
 
@@ -89,7 +89,7 @@ def get_default_config():
     cp.set( "DEFAULT", "postproctypes", "audio/mpeg,audio/mp3,x-audio/mp3")
     cp.set( "DEFAULT", "gettypecommand", "file -b -i \"${EPFILENAME}\"")
     cp.set( "DEFAULT", "postproccommand",
-            "id3v2 -A \"${CASTTITLE}\" -t \"${EPTITLE}\"" +
+            "mid3v2 -A \"${CASTTITLE}\" -t \"${EPTITLE}\" -T ${EPID}" +
             " --WOAF \"${EPURL}\" --WOAS \"${FEEDURL}\" \"${EPFILENAME}\"")
     return cp
 

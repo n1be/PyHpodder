@@ -33,11 +33,11 @@ except NameError:
 
 # Other pypod modules
 from pypod.lib.db import get_all_pc_episodes, get_selected_podcasts
-from pypod.lib.utils import generic_id_help
+from pypod.lib.utils import generic_id_help, pru
 
 __author__    = "Robert N. Evans <http://home.earthlink.net/~n1be/>"
 __copyright__ = "Copyright (C) 2014 {0}. All rights reserved.".format( __author__)
-__date__      = "2014-07-24"
+__date__      = "2014-08-01"
 __license__   = "GPLv3"
 __version__   = "0.2"
 
@@ -56,11 +56,12 @@ def _lscasts_worker( args, gcp, gdbh):
     parser.add_option( "-l", dest="islong", action="store_true", default=False,
                        help="Long format display -- include URLs in output")
     (options, args) = parser.parse_args( args=args)
-    pc_fmt = "{0:<4} {1:>4}/{2:<4} {3}"
+    pc_fmt = "{0:>4} {1:>4}/{2:>4} {3}"
     print( pc_fmt.format( " ID", "Pend", "Tot", "Title"))
     if options.islong:
         url_fmt = "               {0}"
-        print( url_fmt.format( "URL"))
+        mbr_fmt = "updated:{0.updated}, last_try:{0.last_try}, fails:{0.failedattempts}"
+        print( url_fmt.format( "URL and other properties"))
     print( pc_fmt.format( "----", "----", "----",
                           "----------------------------------------"))
     for pc in get_selected_podcasts( gdbh, args):
@@ -70,10 +71,13 @@ def _lscasts_worker( args, gcp, gdbh):
         tot = gdbh.execute("""SELECT COUNT(*) FROM episodes
                                 WHERE castid = ?""",
                            ( pc.castid, )).fetchone()[0]
-        print( pc_fmt.format( pc.castid, pend, tot,
-                              pc.disabled_str + pc.castname))
+        pru( pc_fmt.format(pc.castid, pend, tot, pc.disabled_str + pc.castname))
         if options.islong:
+            mbrs = "updated: {0.updated}, fails: {0.failedattempts}"
+            if pc.failedattempts:
+                mbrs += ", last_try: {0.last_try}"
             print( url_fmt.format( pc.feedurl))
+            print( url_fmt.format( mbrs.format( pc)))
 
 
 # --------------------------------------------------
@@ -91,19 +95,25 @@ def _lsepisodes_worker( args, gcp, gdbh):
     parser.add_option( "-l", dest="islong", action="store_true", default=False,
                        help="Long format display -- include URLs in output")
     (options, args) = parser.parse_args( args=args)
-    ep_fmt = "{0:<4} {1:<4} {2:<4.4} {3:<65.65}"
+    ep_fmt = "{0:>4} {1:>4} {2:<4.4} {3}"
     print( ep_fmt.format( "PcId", "EpId", "Stts", "Episode Title"))
     if options.islong:
         url_fmt = "               {0}"
-        print( url_fmt.format( "Episode URL"))
+        print( url_fmt.format( "Episode URL and other properties"))
     print( ep_fmt.format( "----", "----", "----",
          "----------------------------------------------------------------------"))
     for pc in get_selected_podcasts( gdbh, args):
         for ep in get_all_pc_episodes( gdbh, pc):
-            print( ep_fmt.format( ep.podcast.castid, ep.epid, ep.epstatus,
-                                  ep.eptitle))
+            pru( ep_fmt.format( ep.podcast.castid, ep.episodeid, ep.epstatus,
+                                ep.title))
             if options.islong:
                 print( url_fmt.format( ep.epurl))
+                mbrs = "type: {0.enctype}, len: {0.lenh}, guid: {1}"
+                print( url_fmt.format( mbrs.format( ep, ep.epguid or '(none)')))
+                mbrs = "first_try: {0.first_try}, fails: {0.epfailedattempts}"
+                if ep.epfailedattempts:
+                    mbrs += ", last_try: {0.last_try}"
+                print( url_fmt.format( mbrs.format( ep)))
 
 
 # --------------------------------------------------

@@ -40,7 +40,7 @@ from pypod.lib.utils import exe_name, mutex
 
 __author__    = "Robert N. Evans <http://home.earthlink.net/~n1be/>"
 __copyright__ = "Copyright (C) 2014 {0}. All rights reserved.".format( __author__)
-__date__      = "2014-07-24"
+__date__      = "2014-08-02"
 __license__   = "GPLv3"
 __version__   = "0.2"
 
@@ -52,24 +52,22 @@ def _d( msg):
 
 _sample_urls = [
     "http://soundofhistory.complete.org/files_soh/podcast.xml",
-    "http://www.thelinuxlink.net/tllts/tllts.rss",
-    "http://www.itconversations.com/rss/recentWithEnclosures.php",
-    "http://www.sciam.com/podcast/sciam_podcast_r.xml",
+    "http://goinglinux.com/mp3podcast.xml",
+    "http://rss.sciam.com/sciam/60secsciencepodcast",
     "http://www.npr.org/rss/podcast.php?id=510019",
-    "http://amateurtraveler.com/podcast/rss.xml",
     "http://broadband.wgbh.org/amex/rss/podcast_np.xml",
-    "http://www.npr.org/rss/podcast.php?id=700000" ]
+    "http://www.npr.org/rss/podcast.php?id=510298" ]
 
 
 def _subscribe_to_samples( args, gcp, gdbh):
-    print( "OK, just a moment while I initialize those feeds for you...")
+    print( "OK, just a moment while I initialize those feeds for you...\n")
     _cmd_dict[ "add"]( _sample_urls, gcp, gdbh)
-    ## NYI...
-    ## _cmd_dict[ "update"]( [], gcp, gdbh)
+    print()
+    _cmd_dict[ "update"]( [], gcp, gdbh)
+    print()
     _cmd_dict[ "catchup"]( [ "-n", "1"], gcp, gdbh)
     ## By intent, download is not called.
     ## _cmd_dict[ "download"]( [], gcp, gdbh)
-
 
 
 def _setup_worker( args, gcp, gdbh):

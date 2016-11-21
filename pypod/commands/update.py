@@ -53,9 +53,9 @@ from pypod.lib.utils import generic_id_help, mutex, sanitize_basic
 
 __author__    = "Robert N. Evans <http://home.earthlink.net/~n1be/>"
 __copyright__ = "Copyright (C) 2014 {0}. All rights reserved.".format( __author__)
-__date__      = "2014-07-24"
+__date__      = "2014-09-13"
 __license__   = "GPLv3"
-__version__   = "0.2"
+__version__   = "0.3"
 
 
 def _d( msg):
@@ -63,9 +63,11 @@ def _d( msg):
     logging.debug( "update: " + str( msg))
 
 def _i( msg):
+    "Print informational messages"
     logging.info( "update: " + str( msg))
 
 def _w( msg):
+    "Print warning messages"
     logging.warning( "update: " + str( msg))
 
 
@@ -104,12 +106,12 @@ def _handle_feed_error( pc, gcp, gdbh):
     failattempts = int( get_option( gcp, pc.castid, "podcastfailattempts"))
     # If never was updated, just use number of failed attempts...
     lupdate = pc.lastupdate or 0
-    time_permits_del = pc.lastattempt - lupdate > faildays * 60 * 60 * 24
-    numb_permits_del = pc.failedattempts > failattempts
+    time_permits_disable = pc.lastattempt - lupdate > faildays * 60 * 60 * 24
+    numb_permits_disable = pc.failedattempts > failattempts
     _d( "local {0}".format( locals()))
-    if numb_permits_del and time_permits_del:
+    if numb_permits_disable and time_permits_disable:
         pc.pcenabled = PCEnabled.ErrorDisabled
-        _w( "   Podcast {0.castname} disabled due to errors.".format( pc))
+        _w( "Podcast {0} disabled due to errors.".format( pc.castname or pc.castid))
     update_podcast( gdbh, pc)
     gdbh.commit()
 
@@ -167,8 +169,8 @@ def _item_to_ep( encl, ie, item, pc):
     except:
         _d( "defaulting enclosure length to zero.")
         length = 0
-    return Episode( podcast=pc, epid=0, eptitle=title, epurl=url, epguid=guid,
-                    eptype=type, epstatus=EpisodeStatus.Pending,
+    return Episode( podcast=pc, episodeid=0, title=title, epurl=url,
+                    epguid=guid, enctype=type, epstatus=EpisodeStatus.Pending,
                     eplength=length, epfirstattempt=None, eplastattempt=None,
                     epfailedattempts=0)
 
@@ -180,6 +182,8 @@ def _update_enclosure( encl, ie, item, pc, gcp, gdbh):
         return 0
     newc = add_episode( gdbh, ep)
     gdbh.commit()
+    if newc:
+        _i( "   +--> {0.title}".format( ep)) 
     return newc
 
 
@@ -187,19 +191,22 @@ def _update_feed( d, pc, gcp, gdbh):
     "Apply feed info to this podcast"
     if d.has_key( 'entries'):
         count = 0
-        for item in d.entries:
+        # Reverse list so newest entries are last.  This is compatible with
+        # future updates that will add the new episodes with higher epid's.
+        # Otherwise the 'catchup' will be broken
+        for item in reversed( d.entries):
             if item.has_key( 'enclosures'):
                 for ie, encl in enumerate( item.enclosures):
                     count += _update_enclosure( encl, ie, item, pc, gcp, gdbh)
         if count:
-            _i( "Added {0} new episodes".format( count))
+            _d( "   Added {0} new episodes".format( count))
     if pc.castname == "" and d.feed.has_key( 'title'):
         pc.castname = sanitize_basic( d.feed.title).strip()
 
 
 def _update_podcast( pc, gcp, gdbh):
     "update one podcast feed"
-    _i( " * Podcast {0.castid}: {0.feedurl}".format( pc))
+    _i( " * Podcast {0.castid}: {1}".format( pc, pc.castname or pc.feedurl))
     pc.lastattempt = int( time.time())
     resp, content = cached_get( pc.feedurl)
     if not resp:
@@ -234,7 +241,7 @@ def _update_worker( args, gcp, gdbh):
         try:
             _update_podcast( pc, gcp, gdbh)
         except KeyboardInterrupt:
-            _i( "Interrupted bu Ctrl-C")
+            _i( "Interrupted by Ctrl-C")
             return
 
 

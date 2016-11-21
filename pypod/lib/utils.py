@@ -41,7 +41,7 @@ from config import get_app_dir, get_encl_tmp
 
 __author__    = "Robert N. Evans <http://home.earthlink.net/~n1be/>"
 __copyright__ = "Copyright (C) 2014 {0}. All rights reserved.".format( __author__)
-__date__      = "2014-07-19"
+__date__      = "2014-08-01"
 __license__   = "GPLv3"
 __version__   = "0.2"
 
@@ -90,6 +90,12 @@ It has the advantage that aborting the process releases the lock."""
     _d( "Releasing MUTEX")
     fcntl.lockf( lockfd, fcntl.LOCK_UN)
     os.close( lockfd)
+
+
+def pru( line):
+    """Explicitly encode printed output to avoid UnicodeEncodeError when
+printing a string that includes non-ASCII characters."""
+    print( line.encode( 'utf-8'))
 
 
 def sanitize_basic( inp):

@@ -41,7 +41,7 @@ from pypod.lib.utils import generic_id_help, mutex
 
 __author__    = "Robert N. Evans <http://home.earthlink.net/~n1be/>"
 __copyright__ = "Copyright (C) 2014 {0}. All rights reserved.".format( __author__)
-__date__      = "2014-07-22"
+__date__      = "2014-07-29"
 __license__   = "GPLv3"
 __version__   = "0.2"
 
@@ -75,11 +75,11 @@ def _catchup_podcast( gdbh, n, pc):
     for ep in eps_to_process:
         if ep.epstatus == EpisodeStatus.Pending or \
            ep.epstatus == EpisodeStatus.Error:
-            _d( (pc.castid, ep.epid, str(ep.epstatus) + " -> Skipped"))
+            _d( (pc.castid, ep.episodeid, str(ep.epstatus) + " -> Skipped"))
             ep.epstatus = EpisodeStatus.Skipped
             update_episode( gdbh, ep)
         else:
-            _d( (pc.castid, ep.epid, str(ep.epstatus)))
+            _d( (pc.castid, ep.episodeid, str(ep.epstatus)))
     gdbh.commit()
 
 

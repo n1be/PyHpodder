@@ -37,7 +37,7 @@ from pypod.lib.utils import exe_name
 
 __author__    = "Robert N. Evans <http://home.earthlink.net/~n1be/>"
 __copyright__ = "Copyright (C) 2014 {0}. All rights reserved.".format( __author__)
-__date__      = "2014-07-24"
+__date__      = "2014-08-03"
 __license__   = "GPLv3"
 __version__   = "0.2"
 
@@ -77,7 +77,7 @@ def _cmd_worker( args, gcp, gdbh):
         _w( "Invalid podcast ID given")
     else:
         pc = pcl[0]
-        pc.castname = options.title
+        pc.castname = str( options.title)  # str converts to unicode
         update_podcast( gdbh, pc)
         gdbh.commit()
 

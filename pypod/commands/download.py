@@ -31,6 +31,7 @@ import os.path
 import shutil
 import subprocess
 import time
+import traceback
 try:
     str = unicode
 except NameError:
@@ -46,9 +47,9 @@ from pypod.lib.utils import generic_id_help, mutex, sanitize_filename
 
 __author__    = "Robert N. Evans <http://home.earthlink.net/~n1be/>"
 __copyright__ = "Copyright (C) 2014 {0}. All rights reserved.".format( __author__)
-__date__      = "2014-07-24"
+__date__      = "2014-09-20"
 __license__   = "GPLv3"
-__version__   = "0.2"
+__version__   = "0.3"
 
 _debug = 1
 
@@ -81,15 +82,15 @@ def _handle_episode_error( ep, gcp, gdbh):
     # Consider whether to disable this episode
     faildays = int( get_option( gcp, ep.podcast.castid, "epfaildays"))
     failattempts = int( get_option( gcp,ep.podcast.castid, "epfailattempts"))
-    time_permits_del = ep.eplastattempt - ep.epfirstattempt > \
-                       faildays * 60 * 60 * 24
-    numb_permits_del = ep.epfailedattempts > failattempts
+    time_permits_disable = ep.eplastattempt - ep.epfirstattempt > \
+                           faildays * 60 * 60 * 24
+    numb_permits_disable = ep.epfailedattempts > failattempts
     _d( "local {0}".format( locals()))
-    if numb_permits_del and time_permits_del:
+    if numb_permits_disable and time_permits_disable:
         ep.epstatus = EpisodeStatus.Error
-        msg = " *** {0.podcast.castid}.{0.epid}: Disabled due to errors"
+        msg = " *** {0.podcast.castid}.{0.episodeid}: Disabled due to errors"
     else:
-        msg = " *** {0.podcast.castid}.{0.epid}: Error downloading"
+        msg = " *** {0.podcast.castid}.{0.episodeid}: Error downloading"
     _w( msg.format( ep))
     update_episode( gdbh, ep)
     gdbh.commit()
@@ -97,18 +98,19 @@ def _handle_episode_error( ep, gcp, gdbh):
 
 def _download_episode( ep, gcp, gdbh):
     "Download one pending episode"
-    _i( "{0.podcast.castid}.{0.epid} {0.eptitle}".format( ep))
-    ep.lastattempt = int( time.time())
-    ep.epfirstattempt = ep.epfirstattempt or ep.lastattempt
+    _i( "{0.podcast.castid}.{0.episodeid} {0.title}".format( ep))
+    ep.eplastattempt = int( time.time())
+    ep.epfirstattempt = ep.epfirstattempt or ep.eplastattempt
     filename, path, content_type = easy_get( get_encl_tmp(), ep.epurl)
     if not path:
         return _handle_episode_error( ep, gcp, gdbh)
     _d( " . {0} episode {1} downloaded".format( content_type, path))
-    vars = dict( # These values may be interpolated into config options
-                 castid=ep.podcast.castid,
-                 epid=ep.epid,
+    vars = dict( # These values may be interpolated into config options;
+                 # NOTE: config_parser requires these values to be strings:
+                 castid="{0.podcast.castid:03d}".format( ep),
+                 epid="{0.episodeid:04d}".format( ep),
                  safecasttitle=sanitize_filename( ep.podcast.castname),
-                 safeeptitle=sanitize_filename( ep.eptitle),
+                 safeeptitle=sanitize_filename( ep.title),
                  safefilename=sanitize_filename( filename) )
     newfn = (get_option( gcp, ep.podcast.castid,
                          "downloaddir", vars=vars).strip()
@@ -117,7 +119,7 @@ def _download_episode( ep, gcp, gdbh):
                          "namingpatt", vars=vars).strip())
     # Could use gettypecommand here as the authority on file content type
     if not content_type.strip():
-        content_type = ep.eptype.strip()
+        content_type = ep.enctype.strip()
     # Rename the file to agree with content_type
     for rt in get_option( gcp, ep.podcast.castid, "renametypes").split(","):
         type, sep, suffix = rt.partition( ":")
@@ -132,18 +134,21 @@ def _download_episode( ep, gcp, gdbh):
     # Execute post-process command
     env = os.environ
     env[ "CASTID"] = str( ep.podcast.castid)
-    env[ "CASTTITLE"] = ep.podcast.castname
+    env[ "CASTTITLE"] = ep.podcast.castname.encode( 'utf-8')
     env[ "EPFILENAME"] = newfn
-    env[ "EPID"] = str( ep.epid)
-    env[ "EPTITLE"] = ep.eptitle
+    env[ "EPID"] = str( ep.episodeid)
+    env[ "EPTITLE"] = ep.title.encode( 'utf-8')
     env[ "EPURL"] = ep.epurl
     env[ "FEEDURL"] = ep.podcast.feedurl
     env[ "SAFECASTTITLE"] = sanitize_filename( ep.podcast.castname)
-    env[ "SAFEEPTITLE"] = sanitize_filename( ep.eptitle)
+    env[ "SAFEEPTITLE"] = sanitize_filename( ep.title)
     cmd = get_option( gcp, ep.podcast.castid, "postproccommand").strip()
     if cmd:
+        _d( "Postprocess cmd: {0}\n ENV: {1}".format( cmd, env))
         p = subprocess.Popen(args=cmd, close_fds=True, shell=True, env=env)
+        _d( "Postprocess cmd started")
         p.wait()
+        _d( "Postprocess cmd done, returncode={0}".format( p.returncode))
         if p.returncode:
             _w( "Post-Process command exit status: {0}".format( p.returncode))
     # Update episode status
@@ -171,6 +176,10 @@ def _download_worker( args, gcp, gdbh):
         except KeyboardInterrupt:
             _i( "Interrupted by Ctrl-C")
             return
+        except:
+            # Print error and try next episode
+            traceback.print_exc()
+            continue
 
 
 def _cmd_worker( args, gcp, gdbh):

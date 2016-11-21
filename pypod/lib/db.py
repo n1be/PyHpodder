@@ -1,15 +1,17 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# Copyright (c) 2014, Robert N. Evans
 
 #
-# PyHpodder - A podcast media aggregator
-# Copyright (C) 2010, Robert N. Evans
+# PyPod - A podcast media aggregator.  This program is a re-implementation
+# of John Goerzen's no longer supported hpodder utility.
 #
-# PyHpodder is free software; you can redistribute it and/or modify
+# PyPod is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 #
-# PyHpodder is distributed in the hope that it will be useful,
+# PyPod is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
@@ -18,10 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-
-"""This is the SQL DB access library for hpodder ported to python.
-hpodder was written in Haskell by John Goerzen <http://www.complete.org/>.
-Debian GNU/Linux distributes hpodder"""
+"""This file provides access to the SQL database that stores application state."""
 
 # standard library imports
 from __future__ import print_function, unicode_literals
@@ -36,16 +35,19 @@ try:
 except NameError:
     pass
 
-# Other hpodder modules
+
+# Other PyPod modules
 from config import get_db_path, get_encl_tmp
-from ppod_types import *
+from datatypes import *
 from utils import empty_dir, exe_name
 
+
 __author__    = "Robert N. Evans <http://home.earthlink.net/~n1be/>"
-__copyright__ = "Copyright (C) 2010 {0}. All rights reserved.".format( __author__)
-__date__      = "2010-01-16"
-__license__   = "GPL"
-__version__   = "0.1"
+__copyright__ = "Copyright (C) 2014 {0}. All rights reserved.".format( __author__)
+__date__      = "2014-07-18"
+__license__   = "GPLv3"
+__version__   = "0.2"
+
 
 _debug = 0
 
@@ -204,30 +206,29 @@ def _upgrade_schema( dbh, schemaver):
         raise ValueError( """Unrecognized database schema version: {0}
 You probably need a newer {1} to read this database.""".format( sv, exe_name()))
 
+## --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  -- 
 
 def add_podcast( dbh, pc):
     """ Add a new podcast to the database.
-This ignores the castid on the incomingd podcast,
-and returns a new object with the castid populated.
+The new podcast table row gets a unique castid assigned by sqlite.
+The castid of the supplied podcast instance is modified to contain
+the newly assigned castid.  Nothing is returned.
 A duplicate add is an error."""
     try:
         dbh.execute( """INSERT INTO podcasts
-                            ( castname, feedurl, pcenabled, lastupdate,
-                              lastattempt, failedattempts)
-                            VALUES ( ?, ?, ?, ?, ?, ?)""",
-                            ( pc.castname, pc.feedurl,
-                              pc.pcenabled.index, pc.lastupdate,
-                              pc.lastattempt, pc.failedattempts) )
-        r = dbh.execute( 'SELECT castid FROM podcasts WHERE feedurl = :feedurl',
-                         pc ).fetchone()[0]
-        pc.castid = r
-        return pc
+                     ( castname, feedurl, pcenabled, lastupdate, lastattempt,
+                       failedattempts) VALUES ( ?, ?, ?, ?, ?, ?)""",
+                     ( pc.castname, pc.feedurl, pc.pcenabled.index,
+                       pc.lastupdate, pc.lastattempt, pc.failedattempts) )
+        pc.castid = dbh.execute(
+                        'SELECT castid FROM podcasts WHERE feedurl = :feedurl',
+                        pc ).fetchone()[0]
     except:
-        print( "Error adding feed {0.feedurl}\nPerhaps this URL already exists?".format( pc))
+        print( "Error adding feed {0.feedurl}\nPerhaps this URL is already subscribed?".format( pc), file=sys.stderr)
         raise
 
 def _podcast_convrow( row):
-    "Convert row from database to instance of class Podcast"
+    "Convert a row from the podcasts table to an instance of class Podcast"
     return Podcast(
         castid		= row['castid'.encode('ascii','ignore')],
         castname	= row['castname'.encode('ascii','ignore')],
@@ -235,7 +236,7 @@ def _podcast_convrow( row):
         pcenabled	= PCEnabled[ row['pcenabled'.encode('ascii','ignore')]],
         lastupdate	= row['lastupdate'.encode('ascii','ignore')],
         lastattempt	= row['lastattempt'.encode('ascii','ignore')],
-        failedattempts	= row['failedattempts'.encode('ascii','ignore')])
+        failedattempts	= row['failedattempts'])
 
 def get_all_podcasts( dbh):
     """Return a list of all podcasts."""
@@ -276,7 +277,7 @@ def remove_podcast( dbh, pc):
 ## --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  -- 
 
 def _episode_convrow( pc, row):
-    "Convert row from database to instance of class Episode"
+    "Convert a row from the episodes table to an instance of class Episode"
     return Episode(
         podcast =          pc,
         epid =             row['episodeid'.encode('ascii','ignore')],
@@ -314,55 +315,78 @@ def get_selected_pc_episodes( dbh, pc, wanted_ids):
     return res
 
 def add_episode( dbh, ep): 
-    """ Add a new episode. If the episode already exists, based solely on
-    looking at the GUID (if present), update the URL and title fields.
-    Returns the number of inserted rows."""
-    # We have to be careful of cases where a feed may have two
-    # different episodes with different GUIDs but identical URLs.
-    # So if we have a GUID match here, we must have a conflict on URL,
-    # so we ignore the request to change it.
-    if ep.epguid != '':
-        cur = dbh.execute( """UPDATE OR IGNORE episodes
-                                  SET epurl = ?, title = ?, epguid = ?
-                                  WHERE castid = ? AND
-                                       ( epguid = ? OR epurl = ?)""",
-                           ( ep.epurl, ep.eptitle, ep.epguid,
-                             ep.podcast.castid, ep.epguid, ep.epurl) )
-        if cur.rowcount > 0:
-            # if the UPDATE was successful, that means that something with the
-            # same GUID already exists, so the INSERT below will be ignored.
-            _d( "update done")
-            return 0
-    max_epid = dbh.execute(
-                         'SELECT MAX(episodeid) FROM episodes WHERE castid = ?',
-                           ( ep.podcast.castid,)).fetchone()[0]
-    next_epid = (max_epid or 0) + 1
-    _d( "add_episode: new epid: {0}".format( next_epid))
-    ep.epid = next_epid
-    _update_episodes_table( "INSERT OR IGNORE", dbh, ep)
-    return 1
+    """ Add a new episode.  Called to add episodes discovered by parsing the
+    feed -- typically the episode already exists in the db.  An episode is
+    considered to already exist if called with a non-empty epguid that matches
+    a database row, or if epguid is empty and epurl matches a database row.
+      If the episode already exists, update the row with values from the feed
+    ( eptitle, epurl, epguid, eptype and eplength).
+      Otherwise, generate a new unique epid and add a row to the episodes table.
+      The epid of the supplied episode instance is always modified to contain
+    the epid of the db row.
+      This function returns the number of inserted rows."""
+
+    ids = dbh.execute( """SELECT episodeid FROM episodes
+                          WHERE ( epguid != "" AND epguid == :epguid ) OR
+                                ( epguid == "" AND epurl == :epurl )""",
+                       ep ).fetchall()
+
+    if len( ids) == 1:
+        # Existing episode
+        ep.epid = ids[ 0][ 0]
+        _d( "add_episode: existing epid: {0}".format( ep.epid))
+        dbh.execute( """UPDATE episodes
+                        SET    title=?, epurl=?, epguid=?, enctype=?, eplength=?
+                        WHERE  castid==? AND episodeid==?""",
+                     ( ep.eptitle, ep.epurl, ep.epguid, ep.eptype, ep.eplength, 
+                       ep.podcast.castid, ep.epid) )
+        return 0
+
+    elif len( ids) == 0:
+        # New episode, generate unique epid, set status to Pending
+        max_epid = dbh.execute( """SELECT MAX(episodeid) FROM episodes
+                                   WHERE castid = ?""",
+                                ( ep.podcast.castid,) ).fetchone()[0]
+        ep.epid = (max_epid or 0) + 1
+        ep.epstatus = EpisodeStatus.Pending
+        _d( "add_episode: new epid: {0}".format( ep.epid))
+        dbh.execute( """INSERT INTO episodes
+                        ( castid, episodeid, title, epurl,
+                          epguid, enctype, status, eplength)
+                        VALUES ( ?, ?, ?, ?, ?, ?, ?, ?)""",
+                     ( ep.podcast.castid, ep.epid, ep.eptitle, ep.epurl,
+                       ep.epguid, ep.eptype, ep.epstatus.__str__(),
+                       ep.eplength) )
+        return 1
+ 
+    else:
+        # We may have to be careful of cases where a feed may have two
+        # different episodes with different GUIDs but identical URLs.
+        # To handle such an occurrance, consider discarding the request.
+        raise AssertionError( "Multiple epids match one episode")
+
 
 def update_episode( dbh, ep):
-    "Update an episode.  If it doesn't already exist, create it."
-    _update_episodes_table( "INSERT OR REPLACE", dbh, ep)
+    """Update an existing episode.
+    This is called to update an episode, for example as a result of catchup,
+    download or set_status.  The db row with an epid matching what the caller
+    supplied gets updated.  An exception is thrown if that row does not exist."""
+    cur = dbh.execute( """UPDATE episodes
+                          SET    title=?, epurl=?, epguid=?, enctype=?,
+                                 status=?, eplength=?, epfirstattempt=?,
+                                 eplastattempt=?, epfailedattempts=?
+                          WHERE  castid==?  AND  episodeid==?""",
+                       ( ep.eptitle, ep.epurl, ep.epguid, ep.eptype,
+                         ep.epstatus.__str__(), ep.eplength, ep.epfirstattempt,
+                         ep.eplastattempt, ep.epfailedattempts,
+                         ep.podcast.castid, ep.epid) )
+    if cur.rowcount != 1:
+        raise AssertionError( "Update Episode did not match exactly 1 db row")
 
-def _update_episodes_table( insertsql, dbh, episode):
-    """Privately used common SQL for insert to or update episodes table"""
-    dbh.execute( insertsql + """ INTO episodes (castid, episodeid, title,
-                   epurl, enctype, status, eplength, epfirstattempt,
-                   eplastattempt, epfailedattempts, epguid)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
-                 ( episode.podcast.castid, episode.epid, episode.eptitle,
-                   episode.epurl, episode.eptype,
-                   episode.epstatus.__str__(),
-                   episode.eplength, episode.epfirstattempt,
-                   episode.eplastattempt, episode.epfailedattempts,
-                   episode.epguid ) )
+## --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  -- 
 
-
-
-if __name__ == "__main__":
-    # Test code to run when invoked on the command line
+def test():
+    "Test code to run when invoked on the command line"
     print( __doc__)
     print()
     _debug = 1
@@ -376,56 +400,64 @@ if __name__ == "__main__":
     _prep_db( dbh)
 
     print( "\n*** Add podcasts, getting unique castid:")
-    p1 = Podcast( 0, 'name1', 'URL1', PCEnabled.ErrorDisabled, 7)
-    p2 = Podcast( 0, 'name2', 'URL2', PCEnabled.Enabled, 8, 23, 45)
+    p1 = Podcast( 'URL1', 0, 'name1', PCEnabled.ErrorDisabled, 7)
+    p2 = Podcast( 'URL2', 0, 'name2', PCEnabled.Enabled, 8, 23, 45)
     print( ". before:\n.. {0}\n.. {1}".format( p1, p2))
-    p1 = add_podcast( dbh, p1)
-    p2 = add_podcast( dbh, p2)
+    add_podcast( dbh, p1)
+    add_podcast( dbh, p2)
     print( ". after :\n.. {0}\n.. {1}".format( p1, p2))
 
     try:
         print( "\n*** Add duplicate podcast ...")
         add_podcast( dbh, p1)
-    except Exception as e:
+        raise AssertionError( "Duplicate podcast insertion was not detected")
+    except sqlite.IntegrityError as e:
         print( ". {0!r}".format( e))
 
+    print( "\n*** update non-existant podcast with castid=3, should be a NOOP")
+    p3 = Podcast( 'URL3', 3, 'name3', PCEnabled.UserDisabled, 27, 89, 15)
+    update_podcast( dbh, p3)
+
     print( "\n*** get_selected_podcasts( [ 3, 2, 0]):")
+    print( "    (Should only return podcast with castid=2")
     for p in get_selected_podcasts( dbh, [ 3, 2, 0]):
         print(". {0}".format( p))
 
     print( "\n*** get_selected_podcasts( [ 2, 1, 2, 1]):")
+    print( "    (Should only return podcasts with castid=1 or 2")
     for p in get_selected_podcasts( dbh, [ 2, 1, 2, 1]):
         print(". {0}".format( p))
 
     print( "\n*** Update podcast 1:")
-    p13 = Podcast( 1, 'name3', 'URL3', PCEnabled.UserDisabled, 27, 89, 15)
-    update_podcast( dbh, p13)
+    p3.castid = 1
+    update_podcast( dbh, p3)
 
     print( "\n*** Get all podcasts ...")
     for p in get_all_podcasts( dbh):
+        print("\n. {0!s}".format( p))
         print(". {0!r}".format( p))
 
     print( "\n*** Add Episode ...")
-    ep1 = Episode( p13, 1, "ep1title", "ep1url", "", "application/mp3",
-                   EpisodeStatus.Pending, 100)
-    n=add_episode( dbh, ep1)
-    print( "add_episode returns {0} for {1!r}".format( n, ep1))
+    ep1 = Episode( p3, 0, "pc1_ep1_Title", "ep1url", "",
+                   "application/mp3", EpisodeStatus.Pending, 100)
+    n = add_episode( dbh, ep1)
+    print( "add_episode inserts {0} rows for {1!r}".format( n, ep1))
 
     print( "\n*** Add the same Episode again ...")
-    n=add_episode( dbh, ep1)
-    print( "add_episode returns {0} for {1}".format( n, ep1))
+    n = add_episode( dbh, ep1)
+    print( "add_episode inserts {0} rows for {1}".format( n, ep1))
 
     print( "\n*** Add another Episode with an epguid...")
-    ep12 = Episode( p13, 2, "ep12title", "ep12url", "ep12guid", "application/mp3",
-                   EpisodeStatus.Pending, 1200)
+    ep12 = Episode( p3, 0, "pc1_ep2_Title", "ep12url", "pc1_ep2_guid",
+                   "application/mp3", EpisodeStatus.Pending, 1200)
     n=add_episode( dbh, ep12)
-    print( "add_episode returns {0} for {1}".format( n, ep12))
+    print( "add_episode inserts {0} rows for {1}".format( n, ep12))
 
     print( "\n*** Again add epguid Episode with modified title and URL ...")
     ep12.eptitle = "ep122title"
     ep12.epurl = "ep122url"
     n=add_episode( dbh, ep12)
-    print( "add_episode returns {0} for {1}".format( n, ep12))
+    print( "add_episode inserts {0} rows for {1}".format( n, ep12))
 
     print( "\n*** Change epstatus using update_episode ...")
     ep1.epstatus = EpisodeStatus.Downloaded
@@ -434,7 +466,11 @@ if __name__ == "__main__":
     print( "\n*** Add episode to pc2 using update_episode ...")
     ep2 = Episode( p2, 1, "ep21title", "ep21url", "", "application/mp3",
                    EpisodeStatus.Pending, 2100)
-    update_episode( dbh, ep2)
+    try:
+        update_episode( dbh, ep2)
+        raise AssertionError( "Update of non-existant episode not detected")
+    except AssertionError as e:
+        print( ". {0!r}".format( e))
 
     print( "\n*** Get selected (\"all\") podcasts ...")
     for p in get_selected_podcasts( dbh, ["all"]):
@@ -446,7 +482,7 @@ if __name__ == "__main__":
             print( line)
 
     print( "\n*** All episodes from podcast 3 ...")
-    pc = Podcast( 3, '', '', PCEnabled.Enabled, 7)
+    pc = Podcast( '', 3, '', PCEnabled.Enabled, 7)
     print( get_all_pc_episodes( dbh, pc))
 
     print( "\n*** All episodes from podcast 2 ...")
@@ -484,3 +520,9 @@ if __name__ == "__main__":
     disconnect( dbh)
 
     print( "***database test complete")
+
+
+if __name__ == '__main__':
+    # Run test code when invoked on the command line
+    sys.exit( test())
+

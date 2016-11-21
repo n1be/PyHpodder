@@ -1,15 +1,17 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# Copyright (c) 2014, Robert N. Evans
 
 #
-# PyHpodder - A podcast media aggregator
-# Copyright (C) 2010, Robert N. Evans
+# PyPod - A podcast media aggregator.  This program is a re-implementation
+# of John Goerzen's no longer supported hpodder utility.
 #
-# PyHpodder is free software; you can redistribute it and/or modify
+# PyPod is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 #
-# PyHpodder is distributed in the hope that it will be useful,
+# PyPod is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
@@ -19,9 +21,7 @@
 #
 
 
-"""This is the url download utility routines for hpodder ported to python.
-hpodder was written in Haskell by John Goerzen <http://www.complete.org/>.
-Debian GNU/Linux distributes hpodder"""
+"""This file implements url download utility routines ."""
 
 # standard library imports
 from __future__ import print_function , unicode_literals
@@ -29,25 +29,35 @@ import hashlib
 import logging
 import os
 import socket
+import sys
 from urlparse import urlparse
 try:
     str = unicode
 except NameError:
     pass
 
-# PyPI package
-import httplib2
+# PyPI module httplib2, not in standard library.
+try:
+    import httplib2
+except ImportError:
+    print( """
+  Error: Module "httplib2" not found. Please install "python-httplib2".
+         If this package is not available for your OS, the httplib2
+         package can be downloaded from the Python Package Index,
+         http://pypi.python.org/pypi/httplib2
+""", file=sys.stderr)
+    sys.exit(1)
 
-# other hpodder modules
+# other pypod modules
 from config import get_feed_cache
 from utils import sanitize_filename
 
 
 __author__    = "Robert N. Evans <http://home.earthlink.net/~n1be/>"
-__copyright__ = "Copyright (C) 2010 {0}. All rights reserved.".format( __author__)
-__date__      = "2010-02-05"
-__license__   = "GPL"
-__version__   = "0.1"
+__copyright__ = "Copyright (C) 2014 {0}. All rights reserved.".format( __author__)
+__date__      = "2014-07-19"
+__license__   = "GPLv3"
+__version__   = "0.2"
 
 
 _debug = 0
@@ -56,7 +66,7 @@ if _debug:
     httplib2.debuglevel = 1
 
 
-_headers = {"User-Agent": "PyHpodder/{0} +{1}".format(
+_headers = {"User-Agent": "PyPod/{0} +{1}".format(
         __version__, "http://home.earthlink.net/~n1be/") }
 
 # httplib2 does not understand unicode cache dirname...
@@ -69,7 +79,7 @@ def _d( msg):
     logging.debug( "url: " + str( msg))
 
 def _w( msg):
-    "Print debugging messages"
+    "Print warning messages"
     logging.warning(  msg)
 
 
@@ -123,9 +133,12 @@ def _test_get( url):
     if c:
         print( "cached_get len = {0}".format( len( c)))
 
+## --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  -- 
 
-if __name__ == '__main__':
-    # Test code
+def test():
+    "Test code to run when invoked on the command line"
+    print( __doc__)
+    print()
     logging.basicConfig( level=logging.DEBUG,
                          format="%(levelname)s %(message)s")
 
@@ -196,4 +209,9 @@ if __name__ == '__main__':
     f, p, t = easy_get( "/tmp", url)
     print( "Result file {0}".format( p))
     print()
+
+
+if __name__ == '__main__':
+    # Run test code when invoked on the command line
+    sys.exit( test())
 

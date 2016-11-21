@@ -1,15 +1,17 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# Copyright (c) 2014, Robert N. Evans
 
 #
-# PyHpodder - A podcast media aggregator
-# Copyright (C) 2010, Robert N. Evans
+# PyPod - A podcast media aggregator.  This program is a re-implementation
+# of John Goerzen's no longer supported hpodder utility.
 #
-# PyHpodder is free software; you can redistribute it and/or modify
+# PyPod is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 #
-# PyHpodder is distributed in the hope that it will be useful,
+# PyPod is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
@@ -18,10 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-
-"""This is the list podcasts / episodes commands for hpodder ported to python.
-hpodder was written in Haskell by John Goerzen <http://www.complete.org/>.
-Debian GNU/Linux distributes hpodder"""
+"""This file implements the commands to list podcasts / episodes."""
 
 # standard library imports
 from __future__ import print_function, unicode_literals
@@ -32,15 +31,15 @@ try:
 except NameError:
     pass
 
-# Other hpodder modules
-from hpodder.lib.db import get_all_pc_episodes, get_selected_podcasts
-from hpodder.lib.utils import generic_id_help
+# Other pypod modules
+from pypod.lib.db import get_all_pc_episodes, get_selected_podcasts
+from pypod.lib.utils import generic_id_help
 
 __author__    = "Robert N. Evans <http://home.earthlink.net/~n1be/>"
-__copyright__ = "Copyright (C) 2010 {0}. All rights reserved.".format( __author__)
-__date__      = "2010-01-24"
-__license__   = "GPL"
-__version__   = "0.1"
+__copyright__ = "Copyright (C) 2014 {0}. All rights reserved.".format( __author__)
+__date__      = "2014-07-24"
+__license__   = "GPLv3"
+__version__   = "0.2"
 
 
 # --------------------------------------------------

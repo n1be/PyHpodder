@@ -1,15 +1,17 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# Copyright (c) 2014, Robert N. Evans
 
 #
-# PyHpodder - A podcast media aggregator
-# Copyright (C) 2010, Robert N. Evans
+# PyPod - A podcast media aggregator.  This program is a re-implementation
+# of John Goerzen's no longer supported hpodder utility.
 #
-# PyHpodder is free software; you can redistribute it and/or modify
+# PyPod is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 #
-# PyHpodder is distributed in the hope that it will be useful,
+# PyPod is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
@@ -18,10 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-
-"""This is the callable main program for hpodder ported to python.
-hpodder was written in Haskell by John Goerzen <http://www.complete.org/>.
-Debian GNU/Linux distributes hpodder"""
+"""This file defines the callable main probram of pypod."""
 
 # standard library imports
 from __future__ import print_function, unicode_literals
@@ -34,7 +33,7 @@ try:
 except NameError:
     pass
 
-# other hpodder modules
+# other pypod modules
 from commands import implemented_commands
 from lib.config import load_config
 from lib.db import connect, disconnect
@@ -42,15 +41,15 @@ from lib.utils import exe_name, init_dirs
 
 
 __author__    = "Robert N. Evans <http://home.earthlink.net/~n1be/>"
-__copyright__ = "Copyright (C) 2010 {0}. All rights reserved.".format( __author__)
-__date__      = "2010-01-02"
-__license__   = "GPL"
-__version__   = "0.1"
+__copyright__ = "Copyright (C) 2014 {0}. All rights reserved.".format( __author__)
+__date__      = "2014-07-21"
+__license__   = "GPLv3"
+__version__   = "0.2"
 
 _debug = 0
 
 def main( argv=None):
-    "Callable main program for hpodder"
+    "Callable main program for pypod"
     try:
         prog = os.path.basename( argv[0])
     except( TypeError, IndexError):
@@ -66,7 +65,7 @@ def main( argv=None):
     parser.add_option( "-?", "-h", "--help", action="help",
                        help="Show this help message and exit.")
     parser.add_option( "-d", "--debug", dest="debug", action="store_true",
-                       default=False, help="Enable debugging.")
+                       default=False, help="Enable debugging printouts.")
     parser.disable_interspersed_args() # Stop parsing at cmd verb
     (optargs, command_args) = parser.parse_args()
     if _debug:

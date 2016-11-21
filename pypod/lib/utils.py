@@ -1,15 +1,17 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
+# Copyright (c) 2014, Robert N. Evans
 
 #
-# PyHpodder - A podcast media aggregator
-# Copyright (C) 2010, Robert N. Evans
+# PyPod - A podcast media aggregator.  This program is a re-implementation
+# of John Goerzen's no longer supported hpodder utility.
 #
-# PyHpodder is free software; you can redistribute it and/or modify
+# PyPod is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation; either version 3 of the License, or
 # (at your option) any later version.
 #
-# PyHpodder is distributed in the hope that it will be useful,
+# PyPod is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
@@ -18,10 +20,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-
-"""This is the miscellaneous utility routines for hpodder ported to python.
-hpodder was written in Haskell by John Goerzen <http://www.complete.org/>.
-Debian GNU/Linux distributes hpodder"""
+"""This file implements miscellaneous utility routines."""
 
 # standard library imports
 from __future__ import print_function, unicode_literals
@@ -36,15 +35,15 @@ try:
 except NameError:
     pass
 
-# other hpodder modules
+# other pypod modules
 from config import get_app_dir, get_encl_tmp
 
 
 __author__    = "Robert N. Evans <http://home.earthlink.net/~n1be/>"
-__copyright__ = "Copyright (C) 2010 {0}. All rights reserved.".format( __author__)
-__date__      = "2010-01-03"
-__license__   = "GPL"
-__version__   = "0.1"
+__copyright__ = "Copyright (C) 2014 {0}. All rights reserved.".format( __author__)
+__date__      = "2014-07-19"
+__license__   = "GPLv3"
+__version__   = "0.2"
 
 
 def _d( msg):
@@ -57,12 +56,12 @@ def generic_id_help( name=None):
     fmt_str = \
 """You can optionally specify one or more {0}{1}IDs.  If
 given, only those IDs will be selected for processing.
-The special id "all" will select all {0}{1}IDs.
-If no ID is given, then "all" will be used."""
+The special id "all" will select all {0}s.
+If no ID is given, then "all" will be assumed."""
     if name:
         spacer = " "
     else:
-        spacer = " "
+        spacer = ""
     return fmt_str.format( name, spacer)
 
 
@@ -130,9 +129,10 @@ def empty_dir( path):
         for name in dirs:
             os.rmdir( os.path.join( root, name))
 
+## --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  --  -- 
 
-if __name__ == '__main__':
-    # Test code
+def test():
+    "Test code to run when invoked on the command line"
     print( __doc__)
     print( )
     print( "Testing sanitize_basic")
@@ -150,3 +150,8 @@ if __name__ == '__main__':
         print( "Holding one copy of the mutex, will attempt to get another")
         with mutex():
             print( "Got second mutex")
+
+if __name__ == '__main__':
+    # Run test code when invoked on the command line
+    sys.exit( test())
+

@@ -72,10 +72,8 @@ _headers = {"User-Agent": "PyPod/{0} +{1}".format(
 
 # httplib2 does not understand unicode cache dirname...
 _http = httplib2.Http( get_feed_cache().encode('ascii','ignore'),
-                       timeout=_socket_timeout,
-                       disable_ssl_certificate_validation=True)
-_http_no_cache = httplib2.Http( timeout=_socket_timeout,
-                                disable_ssl_certificate_validation=True)
+                       timeout=_socket_timeout)
+_http_no_cache = httplib2.Http( timeout=_socket_timeout)
 
 
 def _d( msg):
